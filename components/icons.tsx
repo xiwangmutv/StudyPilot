@@ -1,0 +1,5 @@
+import type { SVGProps } from "react";
+export function ArrowUpRight(props: SVGProps<SVGSVGElement>) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}><path d="M7 17 17 7M8 7h9v9" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+export function Play(props: SVGProps<SVGSVGElement>) { return <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M8.4 5.8a1.1 1.1 0 0 1 1.66-.95l8.2 6.2a1.2 1.2 0 0 1 0 1.9l-8.2 6.2A1.1 1.1 0 0 1 8.4 18V5.8Z" /></svg>; }
+export function Sparkle(props: SVGProps<SVGSVGElement>) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" {...props}><path d="M12 3c.45 5.3 3.1 8.55 8 9-4.9.45-7.55 3.7-8 9-.45-5.3-3.1-8.55-8-9 4.9-.45 7.55-3.7 8-9Z" strokeLinejoin="round" /></svg>; }
+export function ChevronRight(props: SVGProps<SVGSVGElement>) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}><path d="m9 5 7 7-7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
