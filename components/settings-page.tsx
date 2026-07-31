@@ -1,27 +1,107 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "./app-shell";
 import { useStudyData } from "@/hooks/use-study-data";
-import { studyPilotCore, type BreathingFrequency, type ContinueMode } from "@/src/core";
+import { firstPilotCore, type UserProfile } from "@/src/core";
 
+/**
+ * Settings are deliberately small: each option below changes real behavior.
+ * Do not add a setting unless the product flow reads it.
+ */
 export function SettingsPage() {
-  const data = useStudyData(); const router = useRouter(); const inputRef = useRef<HTMLInputElement>(null); const [notice, setNotice] = useState("");
-  if (!data.ready) return null;
-  const update = (changes: Partial<typeof data.settings>) => data.updateSettings({ ...data.settings, ...changes });
-  const uploadAvatar = (file?: File) => { if (!file) return; const reader = new FileReader(); reader.onload = () => update({ avatar: String(reader.result) }); reader.readAsDataURL(file); };
-  const clearAll = () => { if (!window.confirm("确定要清除全部本地数据吗？此操作无法撤销。")) return; studyPilotCore.clearAll(); router.push("/"); router.refresh(); };
-  return <AppShell settings={data.settings}><section className="mx-auto max-w-2xl pt-16 sm:pt-24"><p className="text-xs font-semibold tracking-[.14em] text-[#7B7B73] uppercase">个人偏好</p><h1 className="mt-4 font-display text-6xl tracking-[-.06em]">设置</h1><div className="mt-12 space-y-4">
-    <Card title="头像"><div className="flex items-center gap-4">{data.settings.avatar ? <img src={data.settings.avatar} alt="头像" className="h-14 w-14 rounded-full object-cover" /> : <span className="grid h-14 w-14 place-items-center rounded-full bg-lavender font-semibold">{data.settings.name.slice(0, 2)}</span>}<button onClick={() => inputRef.current?.click()} className="rounded-full border border-[#d9d9d0] px-4 py-2 text-sm">更换头像</button><input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => uploadAvatar(event.target.files?.[0])} /></div></Card>
-    <Card title="你的名字"><input value={data.settings.name} onChange={(event) => update({ name: event.target.value })} className="mt-3 w-full rounded-xl bg-[#f4f4ef] px-4 py-3 outline-none" /></Card>
-    <Card title="启动单元预计时间"><Choice values={[3, 5, 8] as const} current={data.settings.starterMinutes} onChange={(starterMinutes) => update({ starterMinutes })} suffix="分钟" /></Card>
-    <Card title="开始前的呼吸"><Choice values={["off", "first", "every"] as const} labels={{ off: "关闭", first: "仅第一次开始", every: "每次开始" }} current={data.settings.breathingFrequency} onChange={(breathingFrequency) => update({ breathingFrequency: breathingFrequency as BreathingFrequency })} /><p className="mt-5 text-sm font-semibold">呼吸组数</p><Choice values={[1, 2, 3] as const} current={data.settings.breathingGroups} onChange={(breathingGroups) => update({ breathingGroups })} suffix="组" /></Card>
-    <Card title="继续学习模式"><Choice values={["free", "guided"] as const} labels={{ free: "自由学习（默认）", guided: "AI 继续指导" }} current={data.settings.continueMode} onChange={(continueMode) => update({ continueMode: continueMode as ContinueMode })} /><p className="mt-3 text-xs leading-relaxed text-[#77776f]">自由学习会在启动后把控制权还给你；AI 继续指导为后续版本预留。</p></Card>
-    <Card title="主题"><Choice values={["light", "dark"] as const} labels={{ light: "浅色", dark: "深色" }} current={data.settings.theme} onChange={(theme) => update({ theme })} /></Card>
-    <button onClick={() => setNotice("设置已自动保存")} className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white">保存设置</button>{notice && <span className="ml-3 text-sm text-[#657149]">{notice}</span>}
-    <article className="rounded-[25px] border border-[#f0d8d4] bg-[#fff8f6] p-6"><p className="font-semibold">清除所有本地数据</p><p className="mt-1 text-sm text-[#806d69]">任务、学习记录、成长档案和设置将被永久移除。</p><button onClick={clearAll} className="mt-4 rounded-full border border-[#dca89e] px-4 py-2 text-sm text-[#9b4334]">清除数据</button></article>
-  </div></section></AppShell>;
+  const data = useStudyData();
+  const router = useRouter();
+  const [draft, setDraft] = useState<UserProfile | null>(null);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (data.ready) setDraft(data.settings);
+  }, [data.ready, data.settings]);
+
+  if (!data.ready || !draft) return null;
+
+  const changed = JSON.stringify(draft) !== JSON.stringify(data.settings);
+  const update = (changes: Partial<UserProfile>) => {
+    setDraft((current) => (current ? { ...current, ...changes } : current));
+    setNotice("");
+  };
+  const save = () => {
+    data.updateSettings(draft);
+    setNotice("设置已保存，并会在下一次启动时生效。");
+  };
+  const clearAll = () => {
+    if (!window.confirm("确定要清除所有本地数据吗？此操作无法撤销。")) return;
+    firstPilotCore.clearAll();
+    router.push("/");
+    router.refresh();
+  };
+
+  return (
+    <AppShell settings={data.settings}>
+      <section className="mx-auto max-w-2xl py-12 sm:py-20">
+        <p className="text-xs font-semibold tracking-[.16em] text-[#7B7B73]">FIRSTPILOT</p>
+        <h1 className="mt-3 font-display text-5xl tracking-[-.06em] sm:text-6xl">设置</h1>
+        <p className="mt-4 max-w-lg text-sm leading-relaxed text-[#77776f]">
+          只保留会真正改变 FirstPilot 行为的选项。
+        </p>
+
+        <div className="mt-9 overflow-hidden rounded-[24px] border border-[#e5e5dd] bg-white shadow-card">
+          <SettingRow title="启动时长" description="首次进入行动时的倒计时。建议从 5 分钟开始；页面文案与计时器会同步使用这个时长。">
+            <Segmented
+              values={[3, 5, 8] as const}
+              value={draft.starterMinutes}
+              onChange={(starterMinutes) => update({ starterMinutes })}
+              labels={{ 3: "3 分钟", 5: "5 分钟 · 推荐", 8: "8 分钟" }}
+            />
+          </SettingRow>
+          <SettingRow title="启动辅助" description="允许时，FirstPilot 只会在判断呼吸有助于移除当前阻碍时，才建议一次呼吸；不会把呼吸塞进固定流程。">
+            <Segmented
+              values={["allow", "never"] as const}
+              value={draft.breathingAssist}
+              onChange={(breathingAssist) => update({ breathingAssist })}
+              labels={{ allow: "允许呼吸辅助", never: "不使用呼吸" }}
+            />
+          </SettingRow>
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-[24px] border border-[#e5e5dd] bg-white shadow-card">
+          <SettingRow title="外观" description="切换浅色或深色界面。">
+            <Segmented
+              values={["light", "dark"] as const}
+              value={draft.theme}
+              onChange={(theme) => update({ theme })}
+              labels={{ light: "浅色", dark: "深色" }}
+            />
+          </SettingRow>
+        </div>
+
+        <div className="mt-6 rounded-[24px] border border-[#f0d8d4] bg-[#fff8f6] p-5 sm:p-6">
+          <h2 className="font-semibold">数据</h2>
+          <p className="mt-1 max-w-lg text-sm leading-relaxed text-[#806d69]">
+            清除会永久移除本机的行动记录、成长档案与设置。
+          </p>
+          <button onClick={clearAll} className="mt-4 rounded-full border border-[#dca89e] px-4 py-2 text-sm font-medium text-[#9b4334]">
+            清除本地数据
+          </button>
+        </div>
+
+        <div className="mt-8 flex items-center justify-end gap-3">
+          <span role="status" className="text-sm text-[#657149]">{notice}</span>
+          <button onClick={save} disabled={!changed} className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+            保存设置
+          </button>
+        </div>
+      </section>
+    </AppShell>
+  );
 }
-function Card({ title, children }: { title: string; children: React.ReactNode }) { return <article className="rounded-[25px] bg-white p-6 shadow-card"><p className="text-sm font-semibold">{title}</p>{children}</article>; }
-function Choice<T extends string | number>({ values, current, onChange, labels, suffix = "" }: { values: readonly T[]; current: T; onChange: (value: T) => void; labels?: Record<string, string>; suffix?: string }) { return <div className="mt-3 flex flex-wrap gap-2">{values.map((value) => <button key={value} onClick={() => onChange(value)} className={`rounded-full px-4 py-2 text-sm ${current === value ? "bg-ink text-white" : "bg-[#f0f0eb]"}`}>{labels?.[String(value)] ?? `${value}${suffix}`}</button>)}</div>; }
+
+function SettingRow({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return <div className="grid gap-4 border-b border-[#eeeeea] px-5 py-5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8 sm:px-6"><div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 max-w-md text-sm leading-relaxed text-[#77776f]">{description}</p></div><div className="sm:justify-self-end">{children}</div></div>;
+}
+
+function Segmented<T extends string | number>({ values, value, onChange, labels }: { values: readonly T[]; value: T; onChange: (value: T) => void; labels: Record<string, string> }) {
+  return <div className="inline-flex max-w-full flex-wrap rounded-xl bg-[#f1f1ec] p-1">{values.map((item) => <button key={item} onClick={() => onChange(item)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition sm:text-sm ${value === item ? "bg-white text-ink shadow-sm" : "text-[#77776f] hover:text-ink"}`}>{labels[String(item)]}</button>)}</div>;
+}

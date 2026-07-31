@@ -1,4 +1,4 @@
-import type { BreathingSession, LearningSession, StartEvent } from "./domain";
+import type { BreathingSession, LearningSession, SessionReflection, StartEvent } from "./domain";
 import { storageKeys, type StorageEngine } from "./storage-engine";
 
 export class HistoryEngine {
@@ -11,6 +11,8 @@ export class HistoryEngine {
   recordStart(event: StartEvent) { this.storage.set(storageKeys.starts, [event, ...this.starts()]); }
   breaths() { return this.storage.get<BreathingSession[]>(storageKeys.breaths, []).sort((a, b) => b.startedAt.localeCompare(a.startedAt)); }
   recordBreath(session: BreathingSession) { this.storage.set(storageKeys.breaths, [session, ...this.breaths()]); }
+  reflections() { return this.storage.get<SessionReflection[]>(storageKeys.reflections, []).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); }
+  recordReflection(reflection: SessionReflection) { this.storage.set(storageKeys.reflections, [reflection, ...this.reflections()]); }
   migrateStartsFromSessions() {
     const existing = this.starts();
     if (existing.length || !this.list().length) return existing;

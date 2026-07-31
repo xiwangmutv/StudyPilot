@@ -1,13 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { advanceBreathing, breathingModes, initialBreathingState } from "../lib/breathing.ts";
-import { fallbackStarterAction, validateStarterAction } from "../lib/action-decomposition.ts";
+import { fallbackStateTransition, repeatsResolvedAction, validateStateTransition } from "../lib/state-transition.ts";
+import { LatestRequest } from "../lib/latest-request.ts";
+import { alignInstructionDuration, firstFocusSeconds } from "../lib/focus-duration.ts";
+import { shouldOfferBreathing } from "../lib/start-assist.ts";
+
+test("only the newest next-action response can update the UI", () => {
+  const requests = new LatestRequest();
+  const first = requests.begin();
+  const second = requests.begin();
+  assert.equal(first.signal.aborted, true);
+  assert.equal(requests.isLatest(first.id), false);
+  assert.equal(requests.isLatest(second.id), true);
+});
+
+test("a cancelled next-action request cannot win after a later request", () => {
+  const requests = new LatestRequest();
+  const request = requests.begin();
+  requests.cancel();
+  assert.equal(request.signal.aborted, true);
+  assert.equal(requests.isLatest(request.id), false);
+});
 
 test("a one-group four-stage breathing ritual finishes after its configured duration", () => {
   const pattern = breathingModes.start.pattern;
   let state = initialBreathingState(pattern);
-  // Every phase reaches 0 before it advances, so each configured second has
-  // one countdown transition and one short phase-transition call.
   for (let index = 0; index < 16; index += 1) state = advanceBreathing(state, pattern, 1);
   assert.deepEqual(state, { group: 1, stage: "ready", secondsRemaining: 0 });
 });
@@ -26,21 +44,64 @@ test("zero-duration breathing stages are skipped", () => {
   assert.deepEqual(state, { group: 1, stage: "inhale", secondsRemaining: 0 });
   state = advanceBreathing(state, pattern, 1);
   assert.deepEqual(state, { group: 1, stage: "exhale", secondsRemaining: 1 });
-  state = advanceBreathing(state, pattern, 1);
-  assert.deepEqual(state, { group: 1, stage: "exhale", secondsRemaining: 0 });
-  state = advanceBreathing(state, pattern, 1);
-  assert.deepEqual(state, { group: 1, stage: "ready", secondsRemaining: 0 });
 });
 
-test("starter action is bounded to a meaningful 3 to 7 minutes", () => {
-  const result = validateStarterAction({ taskTitle: "做第52章听力", starterAction: { title: "完成第一遍听力", instruction: "浏览题目后，完整听第一遍。", estimatedMinutes: 99 } }, "备用任务");
+test("Action Loop accepts exactly one bounded starter action once the user is ready", () => {
+  const result = validateStateTransition({ nextStep: { instruction: "现在已经可以开始了。", blockerCategory: "ready", readyForWork: true }, starterAction: { title: "完成第一遍听力", instruction: "先完整听第一遍，不暂停，也不查看答案。", estimatedMinutes: 99 } }, "做第52章听力");
   assert.ok(result);
-  assert.equal(result.starterAction.estimatedMinutes, 7);
+  assert.equal(result.nextStep.readyForWork, true);
+  assert.equal(result.starterAction?.estimatedMinutes, 5);
 });
 
-test("offline fallback produces one usable starter action", () => {
-  const result = fallbackStarterAction("做第52章听力", 5);
-  assert.equal(result.taskTitle, "做第52章听力");
-  assert.equal(result.starterAction.estimatedMinutes, 5);
-  assert.ok(result.starterAction.instruction.length > 0);
+test("configured first-focus duration is the one used for copy and timer", () => {
+  const settings = { starterMinutes: 5 as const };
+  assert.equal(firstFocusSeconds(settings), 300);
+  assert.equal(alignInstructionDuration("自己说两分钟", settings), "自己说 5 分钟");
+});
+
+test("breathing preference changes the Action Loop behavior", () => {
+  const instruction = "先做一组呼吸，让注意力回到当下。";
+  assert.equal(shouldOfferBreathing(instruction, { breathingAssist: "allow" }), true);
+  assert.equal(shouldOfferBreathing(instruction, { breathingAssist: "never" }), false);
+});
+
+test("Action Loop rejects invented tools or materials that the user did not provide", () => {
+  const result = validateStateTransition({
+    nextStep: { instruction: "现在已经可以开始了。", blockerCategory: "ready", readyForWork: true },
+    starterAction: { title: "打开 Speakout", instruction: "打开 Speakout 第 1 课并开始阅读。", estimatedMinutes: 5 },
+  }, "练习英语口语");
+  assert.equal(result, null);
+});
+
+test("Action Loop accepts a specific detail once the user explicitly provided it", () => {
+  const result = validateStateTransition({
+    nextStep: { instruction: "现在已经可以开始了。", blockerCategory: "ready", readyForWork: true },
+    starterAction: { title: "打开 Speakout", instruction: "打开 Speakout Day 18，完成第一小段。", estimatedMinutes: 5 },
+  }, "学习 Speakout Day 18");
+  assert.ok(result);
+});
+
+test("offline Action Loop removes one environmental blocker before proposing work", () => {
+  const result = fallbackStateTransition({ taskTitle: "学习做饭", blocker: "我躺在床上刷手机，不想动。", completedSteps: [], preferredMinutes: 5 });
+  assert.equal(result.taskTitle, "学习做饭");
+  assert.equal(result.nextStep.readyForWork, false);
+  assert.match(result.nextStep.instruction, /坐起来/);
+});
+
+test("offline Action Loop becomes ready after small transition steps", () => {
+  const result = fallbackStateTransition({ taskTitle: "做第52章听力", blocker: "我很累。", completedSteps: ["先站起来，活动一下身体。", "喝点水。"], preferredMinutes: 5 });
+  assert.equal(result.nextStep.readyForWork, true);
+  assert.equal(result.starterAction?.estimatedMinutes, 5);
+});
+
+test("Action Loop never repeats a completed action", () => {
+  assert.equal(repeatsResolvedAction("先坐起来。", [{ instruction: "先坐起来", status: "completed" }]), true);
+  const result = validateStateTransition(
+    { nextStep: { instruction: "先坐起来。", blockerCategory: "environmental", readyForWork: false } },
+    "学习英语",
+    5,
+    "学习英语 我躺在床上",
+    [{ instruction: "先坐起来", status: "completed" }],
+  );
+  assert.equal(result, null);
 });

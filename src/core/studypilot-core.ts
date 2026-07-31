@@ -7,9 +7,9 @@ import { ResumeEngine } from "./resume-engine";
 import { RuleDecisionEngine, type DecisionEngine } from "./decision-engine";
 import { LocalStorageEngine, storageKeys } from "./storage-engine";
 import { TaskEngine } from "./task-engine";
-import type { BreathingSession, LearningSession, StartEvent, UserProfile } from "./domain";
+import type { BreathingSession, LearningSession, SessionReflection, StartEvent, UserProfile } from "./domain";
 
-export class StudyPilotCore {
+export class FirstPilotCore {
   readonly goals;
   readonly tasks;
   readonly progress;
@@ -39,7 +39,16 @@ export class StudyPilotCore {
 
   profile() {
     const saved = this.storage.get<Partial<UserProfile>>(storageKeys.profile, {});
-    return { name: "学习者", dailyTargetMinutes: 120, theme: "light", starterMinutes: 5, breathingFrequency: "first", breathingGroups: 1, continueMode: "free", ...saved } as UserProfile;
+    // Older local profiles can contain retired settings. Only read the fields
+    // FirstPilot still supports, so dead options cannot affect the Action Loop.
+    return {
+      name: "学习者",
+      dailyTargetMinutes: 120,
+      theme: "light",
+      starterMinutes: 5,
+      breathingAssist: "allow",
+      ...saved,
+    } as UserProfile;
   }
 
   saveProfile(profile: UserProfile) { this.storage.set(storageKeys.profile, profile); }
@@ -53,6 +62,7 @@ export class StudyPilotCore {
 
   recordStart(event: StartEvent) { this.history.recordStart(event); }
   recordBreath(session: BreathingSession) { this.history.recordBreath(session); }
+  recordReflection(reflection: SessionReflection) { this.history.recordReflection(reflection); }
 }
 
-export const studyPilotCore = new StudyPilotCore();
+export const firstPilotCore = new FirstPilotCore();

@@ -4,4 +4,4 @@ export class LocalStorageEngine implements StorageEngine {
   set<T>(key: string, value: T) { if (typeof window !== "undefined") window.localStorage.setItem(key, JSON.stringify(value)); }
   remove(key: string) { if (typeof window !== "undefined") window.localStorage.removeItem(key); }
 }
-export const storageKeys = { goals: "studypilot.goals", tasks: "studypilot.tasks", history: "studypilot.history", starts: "studypilot.starts", breaths: "studypilot.breaths", profile: "studypilot.settings", resume: "studypilot.resume", actionPlans: "studypilot.action-plans", laterStarts: "studypilot.later-starts" } as const;
+export const storageKeys = { goals: "studypilot.goals", tasks: "studypilot.tasks", history: "studypilot.history", starts: "studypilot.starts", breaths: "studypilot.breaths", reflections: "studypilot.reflections", profile: "studypilot.settings", resume: "studypilot.resume", actionPlans: "studypilot.action-plans", laterStarts: "studypilot.later-starts" } as const;
