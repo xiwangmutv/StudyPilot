@@ -6,8 +6,6 @@ import { useLanguage } from "./language-provider";
 import { useStudyData } from "@/hooks/use-study-data";
 
 type FeedbackType = "bug" | "feature" | "general";
-type LocalFeedback = { type: FeedbackType; message: string; almostQuit: string; contact: string; createdAt: string };
-
 export function FeedbackPage() {
   const data = useStudyData();
   const { messages: t } = useLanguage();
@@ -15,16 +13,20 @@ export function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [almostQuit, setAlmostQuit] = useState("");
   const [contact, setContact] = useState("");
-  const [notice, setNotice] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   if (!data.ready) return null;
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!message.trim()) { setNotice(t.feedback.required); return; }
-    const entry: LocalFeedback = { type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim(), createdAt: new Date().toISOString() };
-    const existing = JSON.parse(window.localStorage.getItem("firstpilot-feedback") ?? "[]") as LocalFeedback[];
-    window.localStorage.setItem("firstpilot-feedback", JSON.stringify([...existing, entry]));
-    setMessage(""); setAlmostQuit(""); setContact(""); setNotice(t.feedback.saved);
+    if (status === "sending") return;
+    if (!message.trim()) { setStatus("error"); return; }
+    if (contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim())) { setStatus("error"); return; }
+    setStatus("sending");
+    try {
+      const response = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim() }) });
+      if (!response.ok) throw new Error("Feedback request failed");
+      setMessage(""); setAlmostQuit(""); setContact(""); setStatus("success");
+    } catch { setStatus("error"); }
   }
 
   return <AppShell settings={data.settings}><section className="mx-auto max-w-2xl py-12 sm:py-20">
@@ -40,8 +42,9 @@ export function FeedbackPage() {
       <label className="mt-7 block text-sm font-semibold" htmlFor="contact">{t.feedback.contactLabel}</label>
       <input id="contact" value={contact} onChange={(event) => setContact(event.target.value)} placeholder={t.feedback.contactPlaceholder} className="mt-3 w-full rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 outline-none placeholder:text-[#aaa9a0] focus:border-[#bdbdb4]" />
       <p className="mt-4 text-xs leading-relaxed text-[#77776f]">{t.feedback.note}</p>
-      {notice && <p role="status" className="mt-4 text-sm text-[#657149]">{notice}</p>}
-      <button type="submit" className="mt-7 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white">{t.feedback.submit}</button>
+      {status === "success" && <p role="status" className="mt-4 text-sm text-[#657149]">{t.feedback.sent}</p>}
+      {status === "error" && <p role="alert" className="mt-4 text-sm text-[#a74d3d]">{!message.trim() ? t.feedback.required : contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim()) ? t.feedback.invalidContact : t.feedback.failed}</p>}
+      <button type="submit" disabled={status === "sending"} className="mt-7 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{status === "sending" ? t.feedback.sending : t.feedback.submit}</button>
     </form>
   </section></AppShell>;
 }
