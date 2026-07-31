@@ -6,16 +6,28 @@ import { LatestRequest } from "../lib/latest-request.ts";
 import { alignInstructionDuration, firstFocusSeconds } from "../lib/focus-duration.ts";
 import { shouldOfferBreathing } from "../lib/start-assist.ts";
 import { MemoryFeedbackStore, validateFeedback } from "../lib/feedback.ts";
+import { createGoogleFormPayload, getGoogleFormResponseUrl } from "../lib/google-feedback.ts";
 
 test("feedback validation accepts a bounded valid submission", () => {
-  const result = validateFeedback({ id: "test-id", type: "bug", message: "The timer did not start.", almostQuit: "", contact: "person@example.com" });
+  const result = validateFeedback({ id: "test-id", type: "bug", message: "The timer did not start.", almostQuit: "", contact: "person@example.com", satisfaction: 4 });
   assert.equal(result.ok, true);
 });
 
 test("feedback validation rejects invalid types, empty messages, and bad email", () => {
-  assert.equal(validateFeedback({ id: "test-id", type: "other", message: "Hello", almostQuit: "", contact: "" }).ok, false);
-  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: " ", almostQuit: "", contact: "" }).ok, false);
-  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: "Hello", almostQuit: "", contact: "not-an-email" }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "other", message: "Hello", almostQuit: "", contact: "", satisfaction: 5 }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: " ", almostQuit: "", contact: "", satisfaction: 5 }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: "Hello", almostQuit: "", contact: "not-an-email", satisfaction: 5 }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: "Hello", almostQuit: "", contact: "", satisfaction: 0 }).ok, false);
+});
+
+test("Google Forms payload maps every FirstPilot feedback field", () => {
+  const payload = createGoogleFormPayload({ id: "test-id", type: "feature", message: "Dark mode", almostQuit: "The screen was bright", contact: "person@example.com", satisfaction: 4 });
+  assert.equal(payload.get("entry.1065377403"), "💡 Feature Request");
+  assert.equal(payload.get("entry.1229165353"), "Dark mode");
+  assert.equal(payload.get("entry.476723113"), "The screen was bright");
+  assert.equal(payload.get("entry.2070303933"), "4");
+  assert.equal(payload.get("entry.684873970"), "person@example.com");
+  assert.equal(getGoogleFormResponseUrl("https://docs.google.com/forms/d/e/form-id/viewform?usp=sharing"), "https://docs.google.com/forms/d/e/form-id/formResponse");
 });
 
 test("feedback store accepts one submission ID only once within its TTL", () => {

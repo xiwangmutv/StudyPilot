@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { MemoryFeedbackStore, validateFeedback } from "@/lib/feedback";
+import { createGoogleFormPayload, getGoogleFormResponseUrl } from "@/lib/google-feedback";
 
 export const runtime = "nodejs";
 const feedbackStore = new MemoryFeedbackStore();
@@ -10,28 +11,31 @@ export async function POST(request: Request) {
     const body = await request.json() as Record<string, unknown>;
     const validation = validateFeedback(body);
     if (!validation.ok) return NextResponse.json({ error: validation.error }, { status: 400 });
-    const formUrl = getGoogleFormUrl();
-    if (!formUrl) return NextResponse.json({ error: "Feedback delivery is not configured" }, { status: 503 });
-    if (!feedbackStore.claim(validation.value.id)) return NextResponse.json({ ok: true, duplicate: true, formUrl });
+    const configuredFormUrl = process.env.GOOGLE_FEEDBACK_FORM_URL?.trim();
+    if (!configuredFormUrl) return NextResponse.json({ error: "Feedback delivery is not configured" }, { status: 503 });
+    let formResponseUrl: string;
+    try {
+      formResponseUrl = getGoogleFormResponseUrl(configuredFormUrl);
+    } catch {
+      return NextResponse.json({ error: "Feedback delivery is not configured" }, { status: 503 });
+    }
+    if (!feedbackStore.claim(validation.value.id)) return NextResponse.json({ ok: true, duplicate: true });
     claimedId = validation.value.id;
 
-    // This API boundary intentionally remains in place. A future database or
-    // delivery provider can save the validated submission here without a
-    // frontend change.
-    return NextResponse.json({ ok: true, formUrl });
+    const response = await fetch(formResponseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: createGoogleFormPayload(validation.value),
+      redirect: "manual",
+    });
+    if (!response.ok && (response.status < 300 || response.status >= 400)) {
+      feedbackStore.release(validation.value.id);
+      claimedId = undefined;
+      return NextResponse.json({ error: "Feedback delivery failed" }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true });
   } catch {
     if (claimedId) feedbackStore.release(claimedId);
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  }
-}
-
-function getGoogleFormUrl() {
-  const value = process.env.GOOGLE_FEEDBACK_FORM_URL?.trim();
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
   }
 }

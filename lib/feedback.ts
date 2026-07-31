@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export const feedbackTypes = ["bug", "feature", "general"] as const;
 export type FeedbackType = (typeof feedbackTypes)[number];
 
@@ -9,11 +7,11 @@ export type FeedbackSubmission = {
   message: string;
   almostQuit: string;
   contact: string;
-  submittedAt: string;
+  satisfaction: 1 | 2 | 3 | 4 | 5;
 };
 
-type FeedbackInput = Omit<FeedbackSubmission, "submittedAt">;
 type ValidationResult = { ok: true; value: FeedbackInput } | { ok: false; error: string };
+type FeedbackInput = FeedbackSubmission;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateFeedback(input: Record<string, unknown>): ValidationResult {
@@ -22,13 +20,15 @@ export function validateFeedback(input: Record<string, unknown>): ValidationResu
   const message = typeof input.message === "string" ? input.message.trim() : "";
   const almostQuit = typeof input.almostQuit === "string" ? input.almostQuit.trim() : "";
   const contact = typeof input.contact === "string" ? input.contact.trim() : "";
+  const satisfaction = input.satisfaction;
 
   if (!id || id.length > 100) return { ok: false, error: "Invalid submission." };
   if (!feedbackTypes.includes(type as FeedbackType)) return { ok: false, error: "Invalid feedback type." };
   if (!message || message.length > 5_000) return { ok: false, error: "Feedback must be between 1 and 5000 characters." };
   if (almostQuit.length > 3_000) return { ok: false, error: "Additional feedback is too long." };
   if (contact.length > 254 || (contact && !emailPattern.test(contact))) return { ok: false, error: "Enter a valid email address or leave it empty." };
-  return { ok: true, value: { id, type: type as FeedbackType, message, almostQuit, contact } };
+  if (typeof satisfaction !== "number" || !Number.isInteger(satisfaction) || satisfaction < 1 || satisfaction > 5) return { ok: false, error: "Choose a satisfaction rating." };
+  return { ok: true, value: { id, type: type as FeedbackType, message, almostQuit, contact, satisfaction: satisfaction as FeedbackSubmission["satisfaction"] } };
 }
 
 /** A replaceable boundary for a future durable database-backed store. */
@@ -50,12 +50,4 @@ export class MemoryFeedbackStore implements FeedbackStore {
   }
 
   release(id: string) { this.submissions.delete(id); }
-}
-
-export function createFeedbackSubmission(input: FeedbackInput, now = new Date()): FeedbackSubmission {
-  return { ...input, submittedAt: now.toISOString() };
-}
-
-export function feedbackFingerprint(submission: FeedbackSubmission) {
-  return createHash("sha256").update(`${submission.type}\n${submission.message}\n${submission.almostQuit}\n${submission.contact}`).digest("hex");
 }

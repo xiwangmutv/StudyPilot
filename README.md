@@ -51,13 +51,15 @@ npm.cmd run build
 
 Feedback stays in the existing FirstPilot interface: the browser validates the
 fields, disables repeat clicks while submitting, and shows a success message.
-After validation, `POST /api/feedback` opens your Google Form in a new tab.
-The Google Form collects the final response, so no domain, email provider, or
-paid service is required.
+After validation, `POST /api/feedback` submits the response directly to your
+Google Form. No domain, email provider, or paid service is required.
 
 1. Create a Google Form and add the questions you want to collect. At minimum,
-   add a required feedback-message question; the current FirstPilot fields are
-   type, message, what almost made the user quit, and optional contact details.
+   add these questions exactly: `What type of feedback is this?` (multiple
+   choice: 🐞 Bug Report, 💡 Feature Request, ❤️ General Feedback), `Please
+   describe your feedback` (required paragraph), `What almost made you stop
+   using FirstPilot?` (optional paragraph), `How satisfied are you with
+   FirstPilot?` (1–5 rating), and `Your email (optional)`.
 2. In Google Forms, click **Send**, select the link icon, copy the public form
    URL (it ends in `/viewform`). Make sure anyone with the link can respond.
 3. Add this single environment variable in Vercel for Production, Preview, and
@@ -68,7 +70,7 @@ paid service is required.
    | `GOOGLE_FEEDBACK_FORM_URL` | Your public Google Form URL. |
 
 For local development, copy `.env.example` to `.env.local` and set the same
-variable. No Resend variables or secrets are needed.
+variable. No email-service variables or secrets are needed.
 
 The API route and its validation remain deliberately separate from the UI. When
 you later add a database or a direct delivery service, save the validated

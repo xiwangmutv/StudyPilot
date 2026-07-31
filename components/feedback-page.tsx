@@ -13,9 +13,9 @@ export function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [almostQuit, setAlmostQuit] = useState("");
   const [contact, setContact] = useState("");
+  const [satisfaction, setSatisfaction] = useState<1 | 2 | 3 | 4 | 5>(5);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
-  const [formUrl, setFormUrl] = useState("");
   if (!data.ready) return null;
 
   async function submit(event: FormEvent) {
@@ -25,12 +25,9 @@ export function FeedbackPage() {
     if (contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim())) { setStatus("error"); return; }
     setStatus("sending");
     try {
-      const response = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: submissionId, type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim() }) });
-      const result = await response.json() as { formUrl?: string };
-      if (!response.ok || !result.formUrl) throw new Error("Feedback request failed");
-      setFormUrl(result.formUrl);
+      const response = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: submissionId, type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim(), satisfaction }) });
+      if (!response.ok) throw new Error("Feedback request failed");
       setMessage(""); setAlmostQuit(""); setContact(""); setSubmissionId(crypto.randomUUID()); setStatus("success");
-      window.open(result.formUrl, "_blank", "noopener,noreferrer");
     } catch { setStatus("error"); }
   }
 
@@ -46,8 +43,9 @@ export function FeedbackPage() {
       <textarea id="almost-quit" value={almostQuit} onChange={(event) => setAlmostQuit(event.target.value)} rows={4} placeholder={t.feedback.quitPlaceholder} className="mt-3 w-full resize-none rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 leading-relaxed outline-none placeholder:text-[#aaa9a0] focus:border-[#bdbdb4]" />
       <label className="mt-7 block text-sm font-semibold" htmlFor="contact">{t.feedback.contactLabel}</label>
       <input id="contact" value={contact} onChange={(event) => setContact(event.target.value)} placeholder={t.feedback.contactPlaceholder} className="mt-3 w-full rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 outline-none placeholder:text-[#aaa9a0] focus:border-[#bdbdb4]" />
+      <fieldset className="mt-7"><legend className="text-sm font-semibold">{t.feedback.satisfactionLabel}</legend><div className="mt-3 flex gap-2">{([1, 2, 3, 4, 5] as const).map((score) => <button type="button" key={score} onClick={() => setSatisfaction(score)} aria-pressed={satisfaction === score} className={`h-10 w-10 rounded-full text-sm font-semibold ${satisfaction === score ? "bg-ink text-white" : "bg-[#f0f0eb] text-[#55554e]"}`}>{score}</button>)}</div></fieldset>
       <p className="mt-4 text-xs leading-relaxed text-[#77776f]">{t.feedback.note}</p>
-      {status === "success" && <p role="status" className="mt-4 text-sm text-[#657149]">{t.feedback.sent}{formUrl && <> <a className="font-semibold underline" href={formUrl} target="_blank" rel="noreferrer">{t.feedback.continueToForm}</a></>}</p>}
+      {status === "success" && <p role="status" className="mt-4 text-sm text-[#657149]">{t.feedback.sent}</p>}
       {status === "error" && <p role="alert" className="mt-4 text-sm text-[#a74d3d]">{!message.trim() ? t.feedback.required : contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim()) ? t.feedback.invalidContact : t.feedback.failed}</p>}
       <button type="submit" disabled={status === "sending"} className="mt-7 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{status === "sending" ? t.feedback.sending : t.feedback.submit}</button>
     </form>
