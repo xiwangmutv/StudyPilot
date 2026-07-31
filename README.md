@@ -1,5 +1,7 @@
 # FirstPilot
 
+> FirstPilot doesn't help you finish your work. It helps you start.
+
 ## Your AI Action Guide
 
 不是你不够努力，你只是卡在了开始。
