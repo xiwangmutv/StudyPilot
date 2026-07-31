@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, type SVGProps } from "react";
 import type { UserProfile } from "@/src/core";
 import type { Messages } from "@/lib/i18n";
 import { useLanguage } from "./language-provider";
+import { SignInControl } from "./sign-in-control";
+import { SignInNudge } from "./sign-in-nudge";
 
 export function AppShell({ children, settings, minimal = false }: { children: React.ReactNode; settings?: UserProfile; minimal?: boolean }) {
   const { locale, messages: t, setLocale } = useLanguage();
@@ -22,11 +24,13 @@ export function AppShell({ children, settings, minimal = false }: { children: Re
           <Link href="/" className="shrink-0 rounded-xl bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#363631] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8c8c82] sm:px-3.5 sm:py-2.5 sm:text-sm">
             {locale === "zh" ? "开始学习" : "Start learning"}
           </Link>
+          <SignInControl />
           <LanguageSelector locale={locale} label={t.language} onChange={setLocale} />
           <NavigationMenu settings={settings} initials={initials} labels={t.nav} />
         </div>}
       </nav>
       {children}
+      {!minimal && <SignInNudge />}
     </div>
   </main>;
 }

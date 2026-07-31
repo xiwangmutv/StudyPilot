@@ -76,3 +76,23 @@ The API route and its validation remain deliberately separate from the UI. When
 you later add a database or a direct delivery service, save the validated
 submission in `app/api/feedback/route.ts`; the frontend contract can stay the
 same.
+
+## Optional Google sign-in
+
+FirstPilot works fully as a guest. Google sign-in is intentionally optional and
+appears as a quiet header entry; after three completed sessions, a visitor sees
+one reminder explaining that an account will save progress across devices.
+
+To enable it, create a Google OAuth **Web application** client and add these
+Vercel environment variables for Production, Preview, and Development:
+
+| Variable | Value |
+| --- | --- |
+| `AUTH_SECRET` | A long random secret (for example, `openssl rand -base64 32`) |
+| `AUTH_GOOGLE_ID` | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+
+In Google Cloud, authorize `https://your-domain/api/auth/callback/google` and
+`http://localhost:3000/api/auth/callback/google` for local development. The
+account session is ready now; data remains local until the future cloud-sync
+migration, and no paywall or payment logic is included.
