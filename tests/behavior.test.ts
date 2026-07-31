@@ -6,14 +6,16 @@ import { fallbackStarterAction, validateStarterAction } from "../lib/action-deco
 test("a one-group four-stage breathing ritual finishes after its configured duration", () => {
   const pattern = breathingModes.start.pattern;
   let state = initialBreathingState(pattern);
-  for (let index = 0; index < 12; index += 1) state = advanceBreathing(state, pattern, 1);
+  // Every phase reaches 0 before it advances, so each configured second has
+  // one countdown transition and one short phase-transition call.
+  for (let index = 0; index < 16; index += 1) state = advanceBreathing(state, pattern, 1);
   assert.deepEqual(state, { group: 1, stage: "ready", secondsRemaining: 0 });
 });
 
 test("three breathing groups finish after three full four-stage cycles", () => {
   const pattern = breathingModes.start.pattern;
   let state = initialBreathingState(pattern);
-  for (let index = 0; index < 36; index += 1) state = advanceBreathing(state, pattern, 3);
+  for (let index = 0; index < 48; index += 1) state = advanceBreathing(state, pattern, 3);
   assert.deepEqual(state, { group: 3, stage: "ready", secondsRemaining: 0 });
 });
 
@@ -21,7 +23,11 @@ test("zero-duration breathing stages are skipped", () => {
   const pattern = { inhale: 1, holdIn: 0, exhale: 1, holdOut: 0 };
   let state = initialBreathingState(pattern);
   state = advanceBreathing(state, pattern, 1);
+  assert.deepEqual(state, { group: 1, stage: "inhale", secondsRemaining: 0 });
+  state = advanceBreathing(state, pattern, 1);
   assert.deepEqual(state, { group: 1, stage: "exhale", secondsRemaining: 1 });
+  state = advanceBreathing(state, pattern, 1);
+  assert.deepEqual(state, { group: 1, stage: "exhale", secondsRemaining: 0 });
   state = advanceBreathing(state, pattern, 1);
   assert.deepEqual(state, { group: 1, stage: "ready", secondsRemaining: 0 });
 });

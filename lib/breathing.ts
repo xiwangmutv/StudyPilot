@@ -60,7 +60,10 @@ export function initialBreathingState(pattern: BreathingPattern = breathingModes
 /** Advances a configurable four-stage breathing cycle. Zero-duration stages are skipped. */
 export function advanceBreathing(state: BreathingState, pattern: BreathingPattern = breathingModes.start.pattern, groups = 1): BreathingState {
   if (state.stage === "ready") return state;
-  if (state.secondsRemaining > 1) return { ...state, secondsRemaining: state.secondsRemaining - 1 };
+  // Keep zero visible briefly in the UI before moving on. Callers use a
+  // shorter delay when secondsRemaining is zero, creating a natural beat
+  // between breathing phases without changing the four-stage engine.
+  if (state.secondsRemaining > 0) return { ...state, secondsRemaining: state.secondsRemaining - 1 };
 
   const stageIndex = stages.indexOf(state.stage);
   for (let index = stageIndex + 1; index < stages.length; index += 1) {
