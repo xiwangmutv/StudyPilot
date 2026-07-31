@@ -14,6 +14,7 @@ export function FeedbackPage() {
   const [almostQuit, setAlmostQuit] = useState("");
   const [contact, setContact] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
   if (!data.ready) return null;
 
   async function submit(event: FormEvent) {
@@ -23,9 +24,9 @@ export function FeedbackPage() {
     if (contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim())) { setStatus("error"); return; }
     setStatus("sending");
     try {
-      const response = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim() }) });
+      const response = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: submissionId, type, message: message.trim(), almostQuit: almostQuit.trim(), contact: contact.trim() }) });
       if (!response.ok) throw new Error("Feedback request failed");
-      setMessage(""); setAlmostQuit(""); setContact(""); setStatus("success");
+      setMessage(""); setAlmostQuit(""); setContact(""); setSubmissionId(crypto.randomUUID()); setStatus("success");
     } catch { setStatus("error"); }
   }
 

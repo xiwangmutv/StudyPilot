@@ -5,6 +5,27 @@ import { fallbackStateTransition, repeatsResolvedAction, validateStateTransition
 import { LatestRequest } from "../lib/latest-request.ts";
 import { alignInstructionDuration, firstFocusSeconds } from "../lib/focus-duration.ts";
 import { shouldOfferBreathing } from "../lib/start-assist.ts";
+import { MemoryFeedbackStore, validateFeedback } from "../lib/feedback.ts";
+
+test("feedback validation accepts a bounded valid submission", () => {
+  const result = validateFeedback({ id: "test-id", type: "bug", message: "The timer did not start.", almostQuit: "", contact: "person@example.com" });
+  assert.equal(result.ok, true);
+});
+
+test("feedback validation rejects invalid types, empty messages, and bad email", () => {
+  assert.equal(validateFeedback({ id: "test-id", type: "other", message: "Hello", almostQuit: "", contact: "" }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: " ", almostQuit: "", contact: "" }).ok, false);
+  assert.equal(validateFeedback({ id: "test-id", type: "bug", message: "Hello", almostQuit: "", contact: "not-an-email" }).ok, false);
+});
+
+test("feedback store accepts one submission ID only once within its TTL", () => {
+  const store = new MemoryFeedbackStore(1_000);
+  assert.equal(store.claim("same-request", 1), true);
+  assert.equal(store.claim("same-request", 2), false);
+  store.release("same-request");
+  assert.equal(store.claim("same-request", 3), true);
+  assert.equal(store.claim("same-request", 1_004), true);
+});
 
 test("only the newest next-action response can update the UI", () => {
   const requests = new LatestRequest();

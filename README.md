@@ -46,3 +46,23 @@ npm.cmd run dev
 npm.cmd run test
 npm.cmd run build
 ```
+
+## Feedback delivery (Resend)
+
+The feedback form sends mail through `POST /api/feedback`. Credentials never
+reach the browser. Repeated submits and retries share a submission ID and are
+accepted once during the server's short idempotency window. A future Supabase
+store can replace `MemoryFeedbackStore` in `lib/feedback.ts` without changing
+the frontend or API contract.
+
+First, verify a sending domain in Resend. Then add these Vercel environment
+variables for Production, Preview, and Development as appropriate:
+
+| Variable | Value |
+| --- | --- |
+| `RESEND_API_KEY` | A secret Resend API key with permission to send email. |
+| `FEEDBACK_FROM_EMAIL` | A sender address on your Resend-verified domain, for example `FirstPilot Feedback <feedback@your-domain.com>`. |
+| `FEEDBACK_TO_EMAIL` | The private inbox where your team receives feedback. |
+
+Copy `.env.example` to `.env.local` for local development and replace the
+placeholders yourself. Never commit `.env.local` or paste keys into chat.
