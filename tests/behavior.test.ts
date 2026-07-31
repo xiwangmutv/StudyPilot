@@ -8,6 +8,14 @@ import { shouldOfferBreathing } from "../lib/start-assist.ts";
 import { MemoryFeedbackStore, validateFeedback } from "../lib/feedback.ts";
 import { createGoogleFormPayload, getGoogleFormResponseUrl } from "../lib/google-feedback.ts";
 import { completedSessionCount, isSignInNudgeDismissed, SIGN_IN_NUDGE_THRESHOLD } from "../lib/account.ts";
+import { recommendStateSwitch } from "../lib/state-switch.ts";
+
+test("state switch makes one bounded recommendation without a coaching loop", () => {
+  const recommendation = recommendStateSwitch("distracted");
+  assert.equal(recommendation.title, "Clear one thing from your desk.");
+  assert.equal(recommendation.seconds, 60);
+  assert.equal(recommendStateSwitch("tired", "zh").seconds <= 120, true);
+});
 
 test("sign-in reminder appears after three completed sessions and respects dismissal", () => {
   assert.equal(completedSessionCount([{ completed: true }, { completed: false }, { completed: true }, { completed: true }]), SIGN_IN_NUDGE_THRESHOLD);
