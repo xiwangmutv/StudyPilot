@@ -1,5 +1,15 @@
-import type { StudySession, StudyTask } from "./types";
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-CA");
-export const today = () => new Date().toLocaleDateString("en-CA");
-export const formatDuration = (seconds: number) => { const hours = Math.floor(seconds / 3600); const mins = Math.floor((seconds % 3600) / 60); return hours ? `${hours}小时${mins ? ` ${mins}分` : ""}` : `${mins}分钟`; };
-export function calculateStats(tasks: StudyTask[], history: StudySession[]) { const todayKey = today(), todaySessions = history.filter(s => day(s.finishedAt) === todayKey), todayDuration = todaySessions.reduce((n,s)=>n+s.durationSeconds,0); const start = new Date(); start.setHours(0,0,0,0); start.setDate(start.getDate()-6); const weekly = history.filter(s => new Date(s.finishedAt) >= start); const weekTasks = tasks.filter(t => new Date(t.createdAt) >= start); let streak=0, cursor=new Date(); cursor.setHours(0,0,0,0); const days = new Set(history.filter(s=>s.durationSeconds>0).map(s=>day(s.finishedAt))); while(days.has(cursor.toLocaleDateString("en-CA"))){streak++;cursor.setDate(cursor.getDate()-1)} return { todayDuration, todayCompleted: tasks.filter(t=>t.completed && t.completedAt && day(t.completedAt)===todayKey).length, streak, totalDuration:history.reduce((n,s)=>n+s.durationSeconds,0), totalCompleted:tasks.filter(t=>t.completed).length, weeklyRate: weekTasks.length ? Math.round(weekTasks.filter(t=>t.completed).length/weekTasks.length*100) : 0, weeklyMinutes:weekly.reduce((n,s)=>n+s.durationSeconds,0)/60 }; }
+import type { LearningSession, LearningTask, StartEvent } from "@/src/core";
+import { calculateArchive, dayKey } from "./archive-analytics";
+
+export function calculateStats(tasks: LearningTask[], history: LearningSession[], starts: StartEvent[] = []) {
+  const archive = calculateArchive(history, starts);
+  const today = archive.daily.find((record) => record.day === dayKey(new Date()));
+  return {
+    todayDuration: today?.focusSeconds ?? 0,
+    todayCompleted: tasks.filter((task) => task.completed && task.completedAt && dayKey(task.completedAt) === dayKey(new Date())).length,
+    totalDuration: archive.totalFocusSeconds,
+    totalCompleted: archive.completedActions,
+    actionCount: archive.actionCount,
+    starts: archive.starts,
+  };
+}
