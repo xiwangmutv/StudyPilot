@@ -47,22 +47,30 @@ npm.cmd run test
 npm.cmd run build
 ```
 
-## Feedback delivery (Resend)
+## Feedback delivery (Google Forms)
 
-The feedback form sends mail through `POST /api/feedback`. Credentials never
-reach the browser. Repeated submits and retries share a submission ID and are
-accepted once during the server's short idempotency window. A future Supabase
-store can replace `MemoryFeedbackStore` in `lib/feedback.ts` without changing
-the frontend or API contract.
+Feedback stays in the existing FirstPilot interface: the browser validates the
+fields, disables repeat clicks while submitting, and shows a success message.
+After validation, `POST /api/feedback` opens your Google Form in a new tab.
+The Google Form collects the final response, so no domain, email provider, or
+paid service is required.
 
-First, verify a sending domain in Resend. Then add these Vercel environment
-variables for Production, Preview, and Development as appropriate:
+1. Create a Google Form and add the questions you want to collect. At minimum,
+   add a required feedback-message question; the current FirstPilot fields are
+   type, message, what almost made the user quit, and optional contact details.
+2. In Google Forms, click **Send**, select the link icon, copy the public form
+   URL (it ends in `/viewform`). Make sure anyone with the link can respond.
+3. Add this single environment variable in Vercel for Production, Preview, and
+   Development, then redeploy:
 
-| Variable | Value |
-| --- | --- |
-| `RESEND_API_KEY` | A secret Resend API key with permission to send email. |
-| `FEEDBACK_FROM_EMAIL` | A sender address on your Resend-verified domain, for example `FirstPilot Feedback <feedback@your-domain.com>`. |
-| `FEEDBACK_TO_EMAIL` | The private inbox where your team receives feedback. |
+   | Variable | Value |
+   | --- | --- |
+   | `GOOGLE_FEEDBACK_FORM_URL` | Your public Google Form URL. |
 
-Copy `.env.example` to `.env.local` for local development and replace the
-placeholders yourself. Never commit `.env.local` or paste keys into chat.
+For local development, copy `.env.example` to `.env.local` and set the same
+variable. No Resend variables or secrets are needed.
+
+The API route and its validation remain deliberately separate from the UI. When
+you later add a database or a direct delivery service, save the validated
+submission in `app/api/feedback/route.ts`; the frontend contract can stay the
+same.
