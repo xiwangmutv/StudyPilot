@@ -21,6 +21,7 @@ export function SessionPage() {
   const [elapsed, setElapsed] = useState(0);
   const [barrier, setBarrier] = useState("");
   const [nextStep, setNextStep] = useState("");
+  const [coachReason, setCoachReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -81,6 +82,7 @@ export function SessionPage() {
       const result = await response.json() as ApiResult;
       if (!response.ok || !result.nextStep) throw new Error(result.error || (zh ? "暂时无法准备下一步。" : "We couldn't prepare your next step."));
       setNextStep(result.starterAction?.instruction ?? result.nextStep.instruction);
+      setCoachReason(getCoachReason(result.nextStep.blockerCategory, blocker, zh));
       setPhase("next");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : (zh ? "暂时无法准备下一步。" : "We couldn't prepare your next step."));
@@ -98,11 +100,33 @@ export function SessionPage() {
     {phase === "paused" && <CoachCard eyebrow={zh ? "已暂停" : "PAUSED"} title={step?.title ?? task.title} text={zh ? "准备好时，再回来继续这一小步。" : "Return when you are ready to continue this small step."}><div className="mt-10 flex justify-center gap-3"><button onClick={() => setPhase("focusing")} className="rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white">{zh ? "继续" : "Resume"}</button><button onClick={finishFocus} className="rounded-full border border-[#d9d9d0] bg-white px-7 py-4 text-sm font-semibold">{zh ? "结束" : "Finish"}</button></div></CoachCard>}
     {phase === "reflection" && <CoachCard eyebrow={zh ? "简短回顾" : "QUICK REFLECTION"} title={zh ? "这一步完成了吗？" : "Did you complete this step?"} text={zh ? "如实回答就好。我们据此决定下一步。" : "Answer honestly. We'll use it to choose the next step."}><div className="mt-10 flex justify-center gap-3"><button onClick={() => void reflect(true)} className="rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white">{zh ? "完成了" : "Yes, I did"}</button><button onClick={() => void reflect(false)} className="rounded-full border border-[#d9d9d0] bg-white px-7 py-4 text-sm font-semibold">{zh ? "还没有" : "Not yet"}</button></div></CoachCard>}
     {phase === "barrier" && <CoachCard eyebrow={zh ? "找到阻碍" : "NAME THE BARRIER"} title={zh ? "什么挡住了你？" : "What got in the way?"} text={zh ? "选一个，或用自己的话说。" : "Choose one, or describe it briefly."}><div className="mx-auto mt-8 grid max-w-lg gap-2 sm:grid-cols-2">{barrierOptions.map((option) => <button key={option} onClick={() => setBarrier(option)} className={`rounded-2xl border px-4 py-3 text-left text-sm ${barrier === option ? "border-ink bg-[#f1f1ec]" : "border-[#deded6] bg-[#fafaf7]"}`}>{option}</button>)}</div><textarea value={barrier} onChange={(event) => setBarrier(event.target.value)} placeholder={zh ? "或者写下发生了什么" : "Or describe what happened"} rows={3} className="mx-auto mt-4 block w-full max-w-lg resize-none rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 outline-none" />{error && <p className="mt-3 text-sm text-[#a74d3d]">{error}</p>}<button onClick={() => void submitBarrier()} disabled={!barrier.trim() || loading} className="mt-6 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white disabled:opacity-45">{loading ? (zh ? "正在准备…" : "Preparing…") : (zh ? "给我下一步" : "Show my next step")}</button></CoachCard>}
-    {phase === "next" && <CoachCard eyebrow={zh ? "下一小步" : "NEXT SMALL STEP"} title={zh ? "现在只做这一件事" : "Do just this one thing now"} text={nextStep}><div className="mt-10 flex justify-center gap-3"><Link href="/" className="rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white">{zh ? "回到首页" : "Back home"}</Link><button onClick={() => setPhase("summary")} className="rounded-full border border-[#d9d9d0] bg-white px-7 py-4 text-sm font-semibold">{zh ? "今天先到这里" : "End for today"}</button></div></CoachCard>}
+    {phase === "next" && <div><div className="mx-auto max-w-lg rounded-2xl border border-[#e1e1d9] bg-white px-5 py-4 text-left shadow-sm"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[#7B7B73]">Coach</p><p className="mt-2 text-sm leading-relaxed text-[#686860]">{coachReason}</p></div><p className="mt-10 text-xs font-semibold tracking-[.16em] text-[#7B7B73]">{zh ? "你的下一步" : "YOUR NEXT STEP"}</p><h1 className="mx-auto mt-5 max-w-xl font-display text-[clamp(3rem,8vw,5rem)] leading-[.95] tracking-[-.06em]">{nextStep}</h1><p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-[#6B6B63]">{zh ? "只做这一件事就够了。" : "Just this one thing is enough."}</p><div className="mt-10 flex justify-center gap-3"><Link href="/" className="rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white">{zh ? "我准备好了" : "I'm Ready"}</Link><button onClick={() => setPhase("summary")} className="rounded-full border border-[#d9d9d0] bg-white px-7 py-4 text-sm font-semibold">{zh ? "今天先跳过" : "Skip for Today"}</button></div></div>}
     {phase === "summary" && <CoachCard eyebrow="FirstPilot" title={zh ? "今天到这里。" : "That's enough for today."} text={zh ? "你已经为下一次开始留下了线索。" : "You've left yourself a clear way back in."}><Link href="/" className="mt-10 inline-block rounded-full bg-ink px-7 py-4 text-sm font-semibold text-white">{zh ? "回到首页" : "Back home"}</Link></CoachCard>}
   </section></AppShell>;
 }
 
 function CoachCard({ eyebrow, title, text, children }: { eyebrow: string; title: string; text: string; children: React.ReactNode }) {
   return <div><p className="text-xs font-semibold tracking-[.16em] text-[#7B7B73]">{eyebrow}</p><h1 className="mx-auto mt-6 max-w-xl font-display text-[clamp(3rem,8vw,5rem)] leading-[.95] tracking-[-.06em]">{title}</h1><p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-[#6B6B63]">{text}</p>{children}</div>;
+}
+
+function getCoachReason(category: StateTransitionResult["nextStep"]["blockerCategory"], barrier: string, zh: boolean) {
+  const said = barrier.trim();
+  const reasons = zh
+    ? {
+        physical: "你说自己有些累，所以我们从一个轻一点、马上能做的动作开始。",
+        emotional: "你说现在有些难受，所以我们先把压力降下来一点。",
+        cognitive: "你说不知道从哪里开始，所以这一步只给你一个清楚的起点。",
+        environmental: "你说自己容易被打断，所以这一步先帮你腾出一点专注空间。",
+        perfectionism: "你说事情感觉太多，所以我们把下一步缩小到刚刚好。",
+        ready: "你已经有一点 momentum 了，所以我们把下一步保持简单。",
+      }
+    : {
+        physical: "You said you're feeling tired, so let's start with something light and immediately doable.",
+        emotional: "You said this feels hard right now, so let's lower the pressure before asking for more.",
+        cognitive: "You said you don't know where to start, so this gives you one clear place to begin.",
+        environmental: "You said you're getting pulled away, so this helps create a little space to focus.",
+        perfectionism: "You said it feels like too much, so we're making the next move smaller.",
+        ready: "You've already created some momentum, so let's keep the next move simple.",
+      };
+  return said ? `${zh ? `你刚才说：“${said}”` : `You said: “${said}”`} ${reasons[category]}` : reasons[category];
 }
