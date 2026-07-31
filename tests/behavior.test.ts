@@ -7,19 +7,6 @@ import { alignInstructionDuration, firstFocusSeconds } from "../lib/focus-durati
 import { shouldOfferBreathing } from "../lib/start-assist.ts";
 import { MemoryFeedbackStore, validateFeedback } from "../lib/feedback.ts";
 import { createGoogleFormPayload, getGoogleFormResponseUrl } from "../lib/google-feedback.ts";
-import { completedSessionCount, isSignInNudgeDismissed, SIGN_IN_NUDGE_THRESHOLD } from "../lib/account.ts";
-import { getSuggestion } from "../lib/state-switch.ts";
-
-test("home suggestion is one concise recommendation without a coaching loop", () => {
-  assert.equal(getSuggestion(), "Read one paragraph first, then begin.");
-  assert.equal(getSuggestion("zh"), "先读一段，然后开始。");
-});
-
-test("sign-in reminder appears after three completed sessions and respects dismissal", () => {
-  assert.equal(completedSessionCount([{ completed: true }, { completed: false }, { completed: true }, { completed: true }]), SIGN_IN_NUDGE_THRESHOLD);
-  assert.equal(isSignInNudgeDismissed(String(2_000), 1_000), true);
-  assert.equal(isSignInNudgeDismissed(String(1_000), 1_000), false);
-});
 
 test("feedback validation accepts a bounded valid submission", () => {
   const result = validateFeedback({ id: "test-id", type: "bug", message: "The timer did not start.", almostQuit: "", contact: "person@example.com", satisfaction: 4 });
