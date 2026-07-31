@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AppShell } from "./app-shell";
 import { useLanguage } from "./language-provider";
@@ -35,7 +36,14 @@ export function FeedbackPage() {
     <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#7B7B73]">{t.feedback.eyebrow}</p>
     <h1 className="mt-4 font-display text-5xl tracking-[-.06em] sm:text-6xl">{t.feedback.title}</h1>
     <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#6B6B63]">{t.feedback.description}</p>
-    <form onSubmit={submit} className="mt-10 rounded-[28px] border border-[#e1e1d9] bg-white p-6 shadow-sm sm:p-8">
+    {status === "success" ? <section aria-labelledby="feedback-success-title" className="feedback-success mt-10 rounded-[28px] border border-[#dce7c2] bg-white px-6 py-12 text-center shadow-sm sm:px-10">
+      <div aria-hidden="true" className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf3d8] text-[#657149]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-8 w-8"><path d="m5 12 4.25 4.25L19 6.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </div>
+      <h2 id="feedback-success-title" className="mt-6 font-display text-4xl tracking-[-.05em]">Thank you!</h2>
+      <p role="status" className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-[#6B6B63]">Your feedback has been received. It helps us make FirstPilot better.</p>
+      <Link href="/" className="mt-8 inline-flex rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white">Back to FirstPilot</Link>
+    </section> : <form onSubmit={submit} className="mt-10 rounded-[28px] border border-[#e1e1d9] bg-white p-6 shadow-sm sm:p-8">
       <fieldset><legend className="text-sm font-semibold">{t.feedback.typeLabel}</legend><div className="mt-3 flex flex-wrap gap-2">{(["bug", "feature", "general"] as const).map((item) => <button type="button" key={item} onClick={() => setType(item)} className={`rounded-full px-4 py-2 text-sm ${type === item ? "bg-ink text-white" : "bg-[#f0f0eb] text-[#55554e]"}`}>{t.feedback[item]}</button>)}</div></fieldset>
       <label className="mt-7 block text-sm font-semibold" htmlFor="feedback-message">{t.feedback.messageLabel}</label>
       <textarea id="feedback-message" required value={message} onChange={(event) => setMessage(event.target.value)} rows={5} placeholder={t.feedback.messagePlaceholder} className="mt-3 w-full resize-none rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 leading-relaxed outline-none placeholder:text-[#aaa9a0] focus:border-[#bdbdb4]" />
@@ -45,9 +53,8 @@ export function FeedbackPage() {
       <input id="contact" value={contact} onChange={(event) => setContact(event.target.value)} placeholder={t.feedback.contactPlaceholder} className="mt-3 w-full rounded-2xl border border-[#deded6] bg-[#fafaf7] p-4 outline-none placeholder:text-[#aaa9a0] focus:border-[#bdbdb4]" />
       <fieldset className="mt-7"><legend className="text-sm font-semibold">{t.feedback.satisfactionLabel}</legend><div className="mt-3 flex gap-2">{([1, 2, 3, 4, 5] as const).map((score) => <button type="button" key={score} onClick={() => setSatisfaction(score)} aria-pressed={satisfaction === score} className={`h-10 w-10 rounded-full text-sm font-semibold ${satisfaction === score ? "bg-ink text-white" : "bg-[#f0f0eb] text-[#55554e]"}`}>{score}</button>)}</div></fieldset>
       <p className="mt-4 text-xs leading-relaxed text-[#77776f]">{t.feedback.note}</p>
-      {status === "success" && <p role="status" className="mt-4 text-sm text-[#657149]">{t.feedback.sent}</p>}
       {status === "error" && <p role="alert" className="mt-4 text-sm text-[#a74d3d]">{!message.trim() ? t.feedback.required : contact.trim() && !/^\S+@\S+\.\S+$/.test(contact.trim()) ? t.feedback.invalidContact : t.feedback.failed}</p>}
       <button type="submit" disabled={status === "sending"} className="mt-7 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{status === "sending" ? t.feedback.sending : t.feedback.submit}</button>
-    </form>
+    </form>}
   </section></AppShell>;
 }
